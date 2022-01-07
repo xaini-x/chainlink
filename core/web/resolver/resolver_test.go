@@ -79,7 +79,7 @@ func setupFramework(t *testing.T) *gqlTestFramework {
 		app        = &coremocks.Application{}
 		rootSchema = graphql.MustParseSchema(
 			schema.MustGetRootSchema(),
-			&Resolver{App: app},
+			NewResolver(app),
 		)
 		ctx = loader.InjectDataloader(context.Background(), app)
 	)

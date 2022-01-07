@@ -43,7 +43,15 @@ import (
 )
 
 type Resolver struct {
-	App chainlink.Application
+	App                 chainlink.Application
+	validatedKeeperSpec func(string) (job.Job, error)
+}
+
+func NewResolver(app chainlink.Application) *Resolver {
+	return &Resolver{
+		App:                 app,
+		validatedKeeperSpec: keeper.ValidatedKeeperSpec(),
+	}
 }
 
 type createBridgeInput struct {
@@ -958,7 +966,7 @@ func (r *Resolver) CreateJob(ctx context.Context, args struct {
 	case job.FluxMonitor:
 		jb, err = fluxmonitorv2.ValidatedFluxMonitorSpec(config, args.Input.TOML)
 	case job.Keeper:
-		jb, err = keeper.ValidatedKeeperSpec(args.Input.TOML)
+		jb, err = r.validatedKeeperSpec(args.Input.TOML)
 	case job.Cron:
 		jb, err = cron.ValidatedCronSpec(args.Input.TOML)
 	case job.VRF:

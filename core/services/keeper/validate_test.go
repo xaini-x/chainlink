@@ -141,9 +141,10 @@ encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_pe
 			wantErr: true,
 		},
 	}
+	validated := ValidatedKeeperSpec()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ValidatedKeeperSpec(tt.args.tomlString)
+			got, err := validated(tt.args.tomlString)
 			if tt.wantErr {
 				require.Error(t, err)
 				return

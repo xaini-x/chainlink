@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/smartcontractkit/chainlink/core/services/offchainreporting2"
-
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -20,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/services/keeper"
 	"github.com/smartcontractkit/chainlink/core/services/keystore"
 	"github.com/smartcontractkit/chainlink/core/services/offchainreporting"
+	"github.com/smartcontractkit/chainlink/core/services/offchainreporting2"
 	"github.com/smartcontractkit/chainlink/core/services/pg"
 	"github.com/smartcontractkit/chainlink/core/services/vrf"
 	"github.com/smartcontractkit/chainlink/core/services/webhook"
@@ -28,7 +27,15 @@ import (
 
 // JobsController manages jobs
 type JobsController struct {
-	App chainlink.Application
+	App                 chainlink.Application
+	validatedKeeperSpec func(string) (job.Job, error)
+}
+
+func NewJobsController(app chainlink.Application) *JobsController {
+	return &JobsController{
+		App:                 app,
+		validatedKeeperSpec: keeper.ValidatedKeeperSpec(),
+	}
 }
 
 // Index lists all jobs
@@ -123,7 +130,7 @@ func (jc *JobsController) Create(c *gin.Context) {
 	case job.FluxMonitor:
 		jb, err = fluxmonitorv2.ValidatedFluxMonitorSpec(jc.App.GetConfig(), request.TOML)
 	case job.Keeper:
-		jb, err = keeper.ValidatedKeeperSpec(request.TOML)
+		jb, err = jc.validatedKeeperSpec(request.TOML)
 	case job.Cron:
 		jb, err = cron.ValidatedCronSpec(request.TOML)
 	case job.VRF:

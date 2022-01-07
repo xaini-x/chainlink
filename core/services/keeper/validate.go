@@ -41,44 +41,39 @@ perform_upkeep_tx        [type=ethtx
 encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> perform_upkeep_tx`
 )
 
-// expectedPipeline it is basically parsed expectedObservationSourceRaw value
-var expectedPipeline pipeline.Pipeline
-
-func init() {
-	pp, err := pipeline.Parse(expectedObservationSourceRaw)
+func ValidatedKeeperSpec() func(tomlString string) (job.Job, error) {
+	expectedPipeline, err := pipeline.Parse(expectedObservationSourceRaw)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse default observation source: %v", err))
 	}
-	expectedPipeline = *pp
-}
+	return func(tomlString string) (job.Job, error) {
+		var j = job.Job{
+			ExternalJobID: uuid.NewV4(), // Default to generating a uuid, can be overwritten by the specified one in tomlString.
+		}
 
-func ValidatedKeeperSpec(tomlString string) (job.Job, error) {
-	var j = job.Job{
-		ExternalJobID: uuid.NewV4(), // Default to generating a uuid, can be overwritten by the specified one in tomlString.
+		var spec job.KeeperSpec
+		tree, err := toml.Load(tomlString)
+		if err != nil {
+			return j, err
+		}
+
+		if err := tree.Unmarshal(&j); err != nil {
+			return j, err
+		}
+
+		if err := tree.Unmarshal(&spec); err != nil {
+			return j, err
+		}
+		j.KeeperSpec = &spec
+
+		if j.Type != job.Keeper {
+			return j, errors.Errorf("unsupported type %s", j.Type)
+		}
+
+		if !reflect.DeepEqual(j.Pipeline.Tasks, expectedPipeline.Tasks) {
+			return j, errors.New("invalid observation source provided")
+		}
+
+		return j, nil
 	}
-
-	var spec job.KeeperSpec
-	tree, err := toml.Load(tomlString)
-	if err != nil {
-		return j, err
-	}
-
-	if err := tree.Unmarshal(&j); err != nil {
-		return j, err
-	}
-
-	if err := tree.Unmarshal(&spec); err != nil {
-		return j, err
-	}
-	j.KeeperSpec = &spec
-
-	if j.Type != job.Keeper {
-		return j, errors.Errorf("unsupported type %s", j.Type)
-	}
-
-	if !reflect.DeepEqual(j.Pipeline.Tasks, expectedPipeline.Tasks) {
-		return j, errors.New("invalid observation source provided")
-	}
-
-	return j, nil
 }

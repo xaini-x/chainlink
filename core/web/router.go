@@ -105,9 +105,7 @@ func graphqlHandler(app chainlink.Application) gin.HandlerFunc {
 	}
 
 	schema := graphql.MustParseSchema(rootSchema,
-		&resolver.Resolver{
-			App: app,
-		},
+		resolver.NewResolver(app),
 		schemaOpts...,
 	)
 
@@ -327,7 +325,7 @@ func v2Routes(app chainlink.Application, r *gin.RouterGroup) {
 		authv2.POST("/keys/vrf/import", vrfkc.Import)
 		authv2.POST("/keys/vrf/export/:keyID", vrfkc.Export)
 
-		jc := JobsController{app}
+		jc := NewJobsController(app)
 		authv2.GET("/jobs", paginatedRequest(jc.Index))
 		authv2.GET("/jobs/:ID", jc.Show)
 		authv2.POST("/jobs", jc.Create)
